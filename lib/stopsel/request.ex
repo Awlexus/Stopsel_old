@@ -1,0 +1,23 @@
+defmodule Stopsel.Request do
+  @type t :: %__MODULE__{
+          message_content: String.t(),
+          cropped_message_content: String.t(),
+          message_id: term,
+          channel_id: term,
+          server_id: term,
+          user_id: term,
+          assigns: map
+        }
+
+  defstruct message_content: nil,
+            cropped_message_content: nil,
+            message_id: nil,
+            channel_id: nil,
+            server_id: nil,
+            user_id: nil,
+            assigns: %{}
+
+  def assign(request, key, value) do
+    put_in(request.assigns[key], value)
+  end
+end

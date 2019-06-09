@@ -1,0 +1,94 @@
+defmodule Stopsel.Command do
+  @moduledoc """
+  Module used to define a single command, and may define multiple subcommands
+  """
+  alias Stopsel.Request
+
+  import Stopsel.Helper, only: [combine_atoms: 2]
+
+  defstruct name: nil,
+            help: nil,
+            function: nil,
+            predicates: [],
+            commands: %{},
+            scope: nil
+
+  @behaviour Access
+  @type predicate :: (Request.t() -> Request.t())
+  @type name :: String.t()
+
+  @type t :: %__MODULE__{
+          name: name,
+          help: String.t(),
+          function: atom | (Request.t() -> term),
+          predicates: [predicate],
+          scope: module
+        }
+
+  def build(options, scope \\ nil)
+
+  def build(%__MODULE__{} = command, scope) do
+    do_build(command, scope)
+  end
+
+  def build(options, scope) do
+    __MODULE__
+    |> struct!(options)
+    |> do_build(scope)
+  end
+
+  defp do_build(command, scope) do
+    command
+    |> name_from_function()
+    |> apply_scope(scope)
+    |> build_subcommands()
+  end
+
+  defp apply_scope(command, scope), do: Map.update!(command, :scope, &combine_atoms(&1, scope))
+
+  defp name_from_function(%{name: name} = command) when is_binary(name), do: command
+
+  defp name_from_function(%{function: function} = command) when is_atom(function) do
+    name =
+      function
+      |> to_string()
+      |> String.replace(" ", "_")
+
+    Map.put(command, :name, name)
+  end
+
+  defp name_from_function(_),
+    do: raise("A function needs a valid name or a function to defer the name from")
+
+  defp build_subcommands(command) do
+    update_in(command.commands, fn commands ->
+      Enum.into(commands, %{}, fn subcommand ->
+        subcommand
+        |> build(command.scope)
+        |> with_name()
+      end)
+    end)
+  end
+
+  defp with_name(command), do: {command.name, command}
+
+  # Mandatory implementation of the Access behaviour
+
+  @impl Access
+  @doc false
+  def fetch(command, key) do
+    Map.from_struct(command)[key]
+  end
+
+  @impl Access
+  @doc false
+  def get_and_update(command, key, function) do
+    Map.get_and_update(command, key, &function.(&1))
+  end
+
+  @impl Access
+  @doc false
+  def pop(command, key) do
+    Map.pop(command, key)
+  end
+end
