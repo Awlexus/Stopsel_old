@@ -75,6 +75,52 @@ defmodule Stopsel.CommandTest do
       equal_by?(actual2, expected2, keys)
     end
 
+    test "building from with structs returns the same as with keywordlists" do
+      actual =
+        %Command{
+          name: "calc",
+          scope: Calculator,
+          function: :unknown_operation,
+          commands: [
+            %Command{
+              name: "add",
+              help: "Adds to numbers",
+              function: :add,
+              scope: nil
+            },
+            %Command{
+              name: "subtract",
+              help: "Subtracts b from a",
+              function: :subtract,
+              scope: nil
+            }
+          ]
+        }
+        |> Command.build()
+
+      expected = %Command{
+        name: "calc",
+        scope: Calculator,
+        function: :unknown_operation,
+        commands: %{
+          "add" => %Command{
+            name: "add",
+            help: "Adds to numbers",
+            function: :add,
+            scope: Calculator
+          },
+          "subtract" => %Command{
+            name: "subtract",
+            help: "Subtracts b from a",
+            function: :subtract,
+            scope: Calculator
+          }
+        }
+      }
+
+      assert actual == expected
+    end
+
     defp equal_by?(map1, map2, keys) do
       assert Map.take(map1, keys) == Map.take(map2, keys)
     end
