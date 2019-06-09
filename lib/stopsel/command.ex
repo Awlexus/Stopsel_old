@@ -48,7 +48,8 @@ defmodule Stopsel.Command do
 
   defp name_from_function(%{name: name} = command) when is_binary(name), do: command
 
-  defp name_from_function(%{function: function} = command) when is_atom(function) do
+  defp name_from_function(%{function: function} = command)
+       when function != nil and is_atom(function) do
     name =
       function
       |> to_string()
@@ -77,7 +78,7 @@ defmodule Stopsel.Command do
   @impl Access
   @doc false
   def fetch(command, key) do
-    Map.from_struct(command)[key]
+    Map.fetch(command, key)
   end
 
   @impl Access
@@ -89,6 +90,6 @@ defmodule Stopsel.Command do
   @impl Access
   @doc false
   def pop(command, key) do
-    Map.pop(command, key)
+    {Map.get(command, key), %{command | key => nil}}
   end
 end

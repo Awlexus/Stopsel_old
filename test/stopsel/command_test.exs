@@ -1,7 +1,9 @@
 defmodule Stopsel.CommandTest do
   use ExUnit.Case
   doctest Stopsel.Command
+
   alias Stopsel.{Command, Dispatcher, Request}
+  import ExUnit.CaptureIO
 
   describe "build/2" do
     test "build command" do
@@ -121,6 +123,12 @@ defmodule Stopsel.CommandTest do
       assert actual == expected
     end
 
+    test "building a command without name or function raises" do
+      assert_raise RuntimeError, fn ->
+        Command.build([])
+      end
+    end
+
     defp equal_by?(map1, map2, keys) do
       assert Map.take(map1, keys) == Map.take(map2, keys)
     end
@@ -144,6 +152,27 @@ defmodule Stopsel.CommandTest do
     @tag message_content: "Some unrelated message"
     test "ignores other messages", %{command: command, request: request} do
       assert :ignore == Dispatcher.dispatch(command, request)
+    end
+
+    @tag message_content: "calc add 1 + 2"
+    test "applies predicates", %{command: command, request: request} do
+      command =
+        put_in(command.commands["add"].predicates, [
+          fn request -> IO.puts(request.cropped_message_content) end
+        ])
+
+      assert capture_io(fn -> Dispatcher.dispatch(command, request) end) == "1 + 2\n"
+    end
+
+    @tag message_content: "calc add 1 + 2"
+    test "can execute anonymous function", %{command: command, request: request} do
+      command =
+        put_in(
+          command.commands["add"].function,
+          fn request -> IO.puts(request.cropped_message_content) end
+        )
+
+      assert capture_io(fn -> Dispatcher.dispatch(command, request) end) == "1 + 2\n"
     end
   end
 
@@ -205,5 +234,17 @@ defmodule Stopsel.CommandTest do
          message_content: message_content
        }
      }}
+  end
+
+  describe "fetch/2" do
+    test "can fetch values from command" do
+      assert Access.get(%Command{name: "name"}, :name) == "name"
+    end
+  end
+
+  describe "pop/2" do
+    test "can pop values from command" do
+      assert Access.pop(%Command{name: "name"}, :name) == {"name", %Command{}}
+    end
   end
 end
