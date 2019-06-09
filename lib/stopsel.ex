@@ -11,6 +11,7 @@ defmodule Stopsel do
   def router(options) do
     options
     |> Keyword.put_new(:name, options[:prefix])
+    |> Keyword.delete(:prefix)
     |> command()
   end
 
