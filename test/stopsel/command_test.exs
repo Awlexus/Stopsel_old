@@ -14,7 +14,6 @@ defmodule Stopsel.CommandTest do
           name: "timer",
           scope: Timer,
           function: :count_down,
-          help: "Starts a countdown",
           predicates: predicates
         )
 
@@ -23,7 +22,6 @@ defmodule Stopsel.CommandTest do
         scope: Timer,
         function: :count_down,
         commands: %{},
-        help: "Starts a countdown",
         predicates: predicates
       }
 
@@ -39,11 +37,9 @@ defmodule Stopsel.CommandTest do
           commands: [
             [
               name: "add",
-              help: "Adds to numbers",
               function: :add
             ],
             [
-              help: "Subtracts b from a",
               function: :subtract
             ]
           ]
@@ -56,13 +52,11 @@ defmodule Stopsel.CommandTest do
         commands: %{
           "add" => %Command{
             name: "add",
-            help: "Adds to numbers",
             function: :add,
             scope: Calculator
           },
           "subtract" => %Command{
             name: "subtract",
-            help: "Subtracts b from a",
             function: :subtract,
             scope: Calculator
           }
@@ -71,7 +65,7 @@ defmodule Stopsel.CommandTest do
 
       %{"add" => actual1, "subtract" => actual2} = actual.commands
       %{"add" => expected1, "subtract" => expected2} = expected.commands
-      keys = [:name, :help, :function, :scope]
+      keys = [:name, :function, :scope]
 
       equal_by?(actual1, expected1, keys)
       equal_by?(actual2, expected2, keys)
@@ -86,13 +80,11 @@ defmodule Stopsel.CommandTest do
           commands: [
             %Command{
               name: "add",
-              help: "Adds to numbers",
               function: :add,
               scope: nil
             },
             %Command{
               name: "subtract",
-              help: "Subtracts b from a",
               function: :subtract,
               scope: nil
             }
@@ -107,13 +99,11 @@ defmodule Stopsel.CommandTest do
         commands: %{
           "add" => %Command{
             name: "add",
-            help: "Adds to numbers",
             function: :add,
             scope: Calculator
           },
           "subtract" => %Command{
             name: "subtract",
-            help: "Subtracts b from a",
             function: :subtract,
             scope: Calculator
           }
@@ -249,13 +239,11 @@ defmodule Stopsel.CommandTest do
          commands: %{
            "add" => %Command{
              name: "add",
-             help: "Adds to numbers",
              function: :add,
              scope: Calculator
            },
            "subtract" => %Command{
              name: "subtract",
-             help: "Subtracts b from a",
              function: :subtract,
              scope: Calculator
            }

@@ -7,20 +7,19 @@ defmodule Stopsel.Command do
   import Stopsel.Helper, only: [combine_atoms: 2]
 
   defstruct name: nil,
-            help: nil,
             function: nil,
             predicates: [],
             commands: %{},
             scope: nil
 
   @behaviour Access
-  @type predicate :: (Request.t() -> Request.t())
   @type name :: String.t()
+  @type command_function :: (Request.t() -> term) | atom | nil
+  @type predicate :: (Request.t() -> Request.t())
 
   @type t :: %__MODULE__{
           name: name,
-          help: String.t(),
-          function: atom | (Request.t() -> term),
+          function: command_function,
           predicates: [predicate],
           scope: module
         }
