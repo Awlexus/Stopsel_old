@@ -1,3 +1,5 @@
+alias Stopsel.{Command, Request}
+
 defprotocol Stopsel.Dispatcher do
   @doc """
   Dispatches a message.
@@ -12,27 +14,24 @@ defprotocol Stopsel.Dispatcher do
 
   Returns a new dispatcher
   """
-  def add_command(dispatcher, command_identifier, command)
-
-  # def add_command!(dispatcher, command_identifier, command) do
-  #   bang!(add_command!(dispatcher, command_identifier, command))
-  # end
+  def add_command(dispatcher, path, command)
 
   @doc """
   Removes a command from the dispatcher.
 
   Returns the removed command and a new dispatcher.
   """
-  def unload_command(dispatcher, command_identifier)
+  def unload_command(dispatcher, path)
 
-  # def bang!({:ok, value}), do: value
-  # def bang!({:error, reason}), do: raise(reason)
+  @doc """
+  Returns the command located at the command path
+  """
+  def find_command(dispatcher, path)
 end
-
-alias Stopsel.{Command, Request}
 
 defimpl Stopsel.Dispatcher, for: Command do
   # This clause checks if the message matches the root commands name (the routers prefix)
+  @spec dispatch(Command.t(), Request.t()) :: term | :ingored | :halted
   def dispatch(%Command{} = command, %Request{cropped_message_content: nil} = request) do
     if String.starts_with?(request.message_content, command.name) do
       dispatch(command, request, request.message_content)
@@ -47,7 +46,10 @@ defimpl Stopsel.Dispatcher, for: Command do
     # Check if one of the subcommands matches this message
     with nil <- find_subcommand(command, message_content),
          # No match, so we try to execute this function, after applying the predicates
-         %Request{} = request <- apply_predicates(request, command.predicates) do
+         request =
+           Map.update!(request, :cropped_message_content, &remove_prefix(&1, command.name)),
+         %Request{} = request <-
+           apply_predicates(request, command.predicates) do
       execute(command, request)
     else
       # A matching subcommand was found!
@@ -56,8 +58,11 @@ defimpl Stopsel.Dispatcher, for: Command do
 
         dispatch(command, request, cropped_message_content)
 
-      :halt ->
+      :ignored ->
         :ignored
+
+      :halted ->
+        :halted
     end
   end
 
@@ -89,6 +94,26 @@ defimpl Stopsel.Dispatcher, for: Command do
         {nil, _} -> {:error, :no_match}
         command -> {:ok, command}
       end
+    else
+      {:error, :no_match}
+    end
+  end
+
+  def find_command(%Command{} = command, [name | [next | _path] = path]) do
+    if command.name == name do
+      case Enum.find(command.commands, &(elem(&1, 1).name == next)) do
+        {_name, %Command{} = subcommand} ->
+          find_command(subcommand, path)
+
+        nil ->
+          {:error, :no_match}
+      end
+    end
+  end
+
+  def find_command(%Command{} = command, [name | []]) do
+    if command.name == name do
+      {:ok, command}
     else
       {:error, :no_match}
     end
