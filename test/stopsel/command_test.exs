@@ -158,7 +158,11 @@ defmodule Stopsel.CommandTest do
     test "applies predicates", %{command: command, request: request} do
       command =
         put_in(command.commands["add"].predicates, [
-          fn request -> IO.puts(request.cropped_message_content) end
+          fn request ->
+            IO.puts(request.cropped_message_content)
+
+            request
+          end
         ])
 
       assert capture_io(fn -> Dispatcher.dispatch(command, request) end) == "1 + 2\n"
@@ -208,6 +212,33 @@ defmodule Stopsel.CommandTest do
     end
   end
 
+  describe "find_command/2" do
+    setup do
+      command_with_request("")
+    end
+
+    test "find command", %{command: command} do
+      sub_command = command.commands["add"]
+      assert Dispatcher.find_command(command, ~w"calc add") == {:ok, sub_command}
+    end
+
+    test "returns an error when the commadn is not found", %{command: command} do
+      assert {:error, :no_match} == Dispatcher.find_command(command, ~w"calc adds")
+    end
+  end
+
+  describe "fetch/2" do
+    test "can fetch values from command" do
+      assert Access.get(%Command{name: "name"}, :name) == "name"
+    end
+  end
+
+  describe "pop/2" do
+    test "can pop values from command" do
+      assert Access.pop(%Command{name: "name"}, :name) == {"name", %Command{}}
+    end
+  end
+
   defp command_with_request(message_content) do
     {:ok,
      %{
@@ -234,17 +265,5 @@ defmodule Stopsel.CommandTest do
          message_content: message_content
        }
      }}
-  end
-
-  describe "fetch/2" do
-    test "can fetch values from command" do
-      assert Access.get(%Command{name: "name"}, :name) == "name"
-    end
-  end
-
-  describe "pop/2" do
-    test "can pop values from command" do
-      assert Access.pop(%Command{name: "name"}, :name) == {"name", %Command{}}
-    end
   end
 end
