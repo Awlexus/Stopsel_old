@@ -1,9 +1,5 @@
 defmodule Stopsel do
-  @moduledoc """
-  Documentation for Stopsel.
-  """
-
-  alias Stopsel.Command
+  alias Stopsel.{Command, Dispatcher, Request}
 
   @doc """
   Same as `command/1` except you can use `:prefix` instead of `:name`
@@ -12,13 +8,25 @@ defmodule Stopsel do
     options
     |> Keyword.put_new(:name, options[:prefix])
     |> Keyword.delete(:prefix)
-    |> command()
+    |> Command.build()
   end
 
   @doc """
   Builds a command for the given options.
 
-  See `Stopsel.Command` for more information.
+  See [`build/2`](Stopsel.Command.html#build/2) for more information.
   """
   defdelegate command(options), to: Command, as: :build
+
+  @doc """
+  Dispatches a message.
+
+  See [`dispatch/2`](Stopsel.Dispatcher.html#dispatch/2) for more info.
+  """
+  @spec dispatch(Dispatcher.t(), String.t() | Request.t()) :: term | :ignored | :halted
+  def dispatch(dispatcher, message_content) when is_binary(message_content) do
+    dispatch(dispatcher, %Request{message_content: message_content})
+  end
+
+  defdelegate dispatch(dispatcher, request), to: Dispatcher
 end
