@@ -32,7 +32,7 @@ end
 defimpl Stopsel.Dispatcher, for: Command do
   # This clause checks if the message matches the root commands name (the routers prefix)
   @spec dispatch(Command.t(), Request.t()) :: term | :ingored | :halted
-  def dispatch(%Command{} = command, %Request{cropped_message_content: nil} = request) do
+  def dispatch(%Command{} = command, %Request{derived_content: nil} = request) do
     if String.starts_with?(request.message_content, command.name) do
       dispatch(command, request, request.message_content)
     else
@@ -41,22 +41,20 @@ defimpl Stopsel.Dispatcher, for: Command do
   end
 
   def dispatch(%Command{} = command, %Request{} = request) do
-    message_content = remove_prefix(request.cropped_message_content, command.name)
+    message_content = remove_prefix(request.derived_content, command.name)
 
     # Check if one of the subcommands matches this message
     with nil <- find_subcommand(command, message_content),
          # No match, so we try to execute this function, after applying the predicates
-         request =
-           Map.update!(request, :cropped_message_content, &remove_prefix(&1, command.name)),
-         %Request{} = request <-
-           apply_predicates(request, command.predicates) do
+         request = Map.update!(request, :derived_content, &remove_prefix(&1, command.name)),
+         %Request{} = request <- apply_predicates(request, command.predicates) do
       execute(command, request)
     else
       # A matching subcommand was found!
       %Command{} = command ->
-        cropped_message_content = remove_prefix(message_content, command.name)
+        derived_content = remove_prefix(message_content, command.name)
 
-        dispatch(command, request, cropped_message_content)
+        dispatch(command, request, derived_content)
 
       :ignored ->
         :ignored
@@ -66,9 +64,9 @@ defimpl Stopsel.Dispatcher, for: Command do
     end
   end
 
-  # Helper for updating the cropped_message_content
-  defp dispatch(command, request, cropped_message_content) do
-    dispatch(command, %{request | cropped_message_content: cropped_message_content})
+  # Helper for updating the derived_content
+  defp dispatch(command, request, derived_content) do
+    dispatch(command, %{request | derived_content: derived_content})
   end
 
   def add_command(%Command{} = dispatcher, [name | path], command) do

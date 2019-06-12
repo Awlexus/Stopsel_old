@@ -1,7 +1,7 @@
 defmodule Stopsel.Request do
   @type t :: %__MODULE__{
           message_content: String.t(),
-          cropped_message_content: String.t(),
+          derived_content: String.t(),
           message_id: term,
           channel_id: term,
           server_id: term,
@@ -10,7 +10,7 @@ defmodule Stopsel.Request do
         }
 
   defstruct message_content: nil,
-            cropped_message_content: nil,
+            derived_content: nil,
             message_id: nil,
             channel_id: nil,
             server_id: nil,
