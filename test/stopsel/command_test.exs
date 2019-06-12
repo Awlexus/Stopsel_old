@@ -149,7 +149,7 @@ defmodule Stopsel.CommandTest do
       command =
         put_in(command.commands["add"].predicates, [
           fn request ->
-            IO.puts(request.cropped_message_content)
+            IO.puts(request.derived_content)
 
             request
           end
@@ -163,10 +163,20 @@ defmodule Stopsel.CommandTest do
       command =
         put_in(
           command.commands["add"].function,
-          fn request -> IO.puts(request.cropped_message_content) end
+          fn request -> IO.puts(request.derived_content) end
         )
 
       assert capture_io(fn -> Dispatcher.dispatch(command, request) end) == "1 + 2\n"
+    end
+
+    @tag message_content: "print_1"
+    test "returns the function if it's a string", %{request: request} do
+      command = %Command{
+        name: "print_1",
+        function: "I printed 1"
+      }
+
+      assert Dispatcher.dispatch(command, request) == "I printed 1"
     end
   end
 
