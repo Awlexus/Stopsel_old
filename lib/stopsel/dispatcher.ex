@@ -32,6 +32,10 @@ end
 defimpl Stopsel.Dispatcher, for: Command do
   # This clause checks if the message matches the root commands name (the routers prefix)
   @spec dispatch(Command.t(), Request.t()) :: term | :ingored | :halted
+  def dispatch(%Command{} = command, %Request{dispatcher: nil} = request) do
+    dispatch(command, %{request | dispatcher: command})
+  end
+
   def dispatch(%Command{} = command, %Request{derived_content: nil} = request) do
     if String.starts_with?(request.message_content, command.name) do
       dispatch(command, request, request.message_content)
@@ -46,7 +50,7 @@ defimpl Stopsel.Dispatcher, for: Command do
     # Check if one of the subcommands matches this message
     with nil <- find_subcommand(command, message_content),
          # No match, so we try to execute this function, after applying the predicates
-         request = Map.update!(request, :derived_content, &remove_prefix(&1, command.name)),
+         request = update_request(request, command),
          %Request{} = request <- apply_predicates(request, command.predicates) do
       execute(command, request)
     else
@@ -67,21 +71,6 @@ defimpl Stopsel.Dispatcher, for: Command do
   # Helper for updating the derived_content
   defp dispatch(command, request, derived_content) do
     dispatch(command, %{request | derived_content: derived_content})
-  end
-
-  def add_command(%Command{} = dispatcher, [name | path], command) do
-    if dispatcher.name == name do
-      target_path = [:commands | Enum.intersperse(path ++ [command.name], :commands)]
-
-      try do
-        {:ok, put_in(dispatcher, target_path, command)}
-      rescue
-        ArgumentError ->
-          {:error, :no_match}
-      end
-    else
-      {:error, :no_match}
-    end
   end
 
   def unload_command(%Command{} = dispatcher, [name | path]) do
@@ -117,7 +106,29 @@ defimpl Stopsel.Dispatcher, for: Command do
     end
   end
 
+  defp update_request(request, command) do
+    request
+    |> Map.update!(:derived_content, &remove_prefix(&1, command.name))
+    |> Map.put(:current_command, command)
+  end
+
+  def add_command(%Command{} = dispatcher, [name | path], command) do
+    if dispatcher.name == name do
+      target_path = [:commands | Enum.intersperse(path ++ [command.name], :commands)]
+
+      try do
+        {:ok, put_in(dispatcher, target_path, command)}
+      rescue
+        ArgumentError ->
+          {:error, :no_match}
+      end
+    else
+      {:error, :no_match}
+    end
+  end
+
   defp execute(%Command{function: nil}, _), do: :ignored
+  defp execute(%Command{function: function}, _) when is_binary(function), do: function
 
   defp execute(%Command{function: function}, request) when is_function(function, 1),
     do: function.(request)
