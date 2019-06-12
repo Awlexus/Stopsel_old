@@ -43,7 +43,7 @@ defmodule Stopsel.Command do
     |> build_subcommands()
   end
 
-  defp apply_scope(command, scope), do: Map.update!(command, :scope, &combine_atoms(&1, scope))
+  defp apply_scope(command, scope), do: Map.update!(command, :scope, &combine_atoms(scope, &1))
 
   defp name_from_function(%{name: name} = command) when is_binary(name), do: command
 
