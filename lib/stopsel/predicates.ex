@@ -1,16 +1,14 @@
 defmodule Stopsel.Predicates do
   alias Stopsel.{Dispatcher, Request}
 
-  @type callback ::
-          (Request.t(),
-           %{
-             moduledoc: String.t() | nil,
-             function_doc: String.t() | nil,
-             subcommand_docs: [String.t()]
-           }
-           | {:error, :no_docs | :module_not_found} ->
-             term)
-
+  @type good_result :: %{
+          moduledoc: String.t() | nil,
+          function_doc: String.t() | nil,
+          subcommand_docs: [String.t()]
+        }
+  @type bad_result :: {:error, :no_docs | :module_not_found}
+  @type result :: good_result | bad_result
+  @type callback :: (Request.t(), result -> term)
   @type option ::
           {:name, String.t()}
           | {:callback, callback}
@@ -21,12 +19,11 @@ defmodule Stopsel.Predicates do
   If the extra `:help` is set for the command it'll returned.
   Otherwise this function will try to fetch the Dokumentation provided with `@doc`
 
-    Options:
-      * name      - This function tries to imitate a command. If you add this predicate to
-                           the Command with the name ";", your users can access help for commands
-                           with ";help"
-      * callback  - A function which will be called when help was successfully retrieved.
-      * help_help - sets `:function_doc` when the user asks for help on the help command
+  #### Options
+  * `name` - This function tries to imitate a command. If you add this predicate to
+  the Command with the name ";", your users can access help for commands with ";help"
+  * `callback`  - A function which will be called when help was successfully retrieved.
+  * `help_help` - sets `:function_doc` when the user asks for help on the help command
   """
   @spec help([option]) :: Request.t() | :halted
   def help(options) do
@@ -37,7 +34,7 @@ defmodule Stopsel.Predicates do
       cond do
         # User wants help for helpcommand
         match?([^name, ^name | _], String.split(request.derived_content, parts: 3)) ->
-          callback_success.(%{
+          callback.(request, %{
             module_doc: nil,
             function_docs: Keyword.get(options, :help_help, "Shows you how to use this bot"),
             subcommand_docs: []
@@ -49,14 +46,14 @@ defmodule Stopsel.Predicates do
           result =
             case get_command(request) do
               # Command has a custom help field. We'll use this
-              {:ok, %{extras: %{help: help}}} ->
+              {:ok, %{extras: %{help: help}} = command} ->
                 request
-                |> helpmap()
+                |> helpmap(command)
                 |> Map.update!(:function_doc, help)
 
               # Fetch help for command
               {:ok, %{function: function} = command} when is_atom(function) ->
-                helpmap(request)
+                helpmap(request, command)
 
               # Return error that the user may handle
               error ->
@@ -73,13 +70,14 @@ defmodule Stopsel.Predicates do
     end
   end
 
-  defp helpmap(request) do
-    with {_, _, _, moduledoc, _, _, function_docs} <- Code.fetch_docs(command.scope),
+  defp helpmap(request, command) do
+    with {_, _, _, moduledoc, _, _, function_docs} <-
+           Code.fetch_docs(command.scope),
          {:docs, function_doc} <-
            {:docs, Keyword.get(function_docs, request.command.function)} do
       %{
         moduledoc: maybe_moduledoc(moduledoc),
-        function_doc: maybe_function_doc(functino_doc),
+        function_doc: maybe_function_doc(function_doc),
         subcommand_docs: subcommand_docs(command.subcommands)
       }
     else
