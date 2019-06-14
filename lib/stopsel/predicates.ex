@@ -1,19 +1,19 @@
 defmodule Stopsel.Predicates do
   alias Stopsel.{Dispatcher, Request}
 
-  @type success_function ::
+  @type callback ::
           (Request.t(),
            %{
              moduledoc: String.t() | nil,
              function_doc: String.t() | nil,
              subcommand_docs: [String.t()]
-           } ->
+           }
+           | {:error, :no_docs | :module_not_found} ->
              term)
 
   @type option ::
           {:name, String.t()}
-          | {:callback_success, success_function}
-          | {:callback_failure, (Request.t(), {:error, :no_docs | :module_not_found} -> term)}
+          | {:callback, callback}
           | {:help_help, String.t()}
   @doc """
   Fetches the help for a command.
@@ -45,40 +45,50 @@ defmodule Stopsel.Predicates do
           })
 
         String.starts_with?(request.derived_content, name) ->
-          case get_command(request) do
-            {:ok, %{extras: %{help: help}}} ->
-              callback_success.(help)
+          result =
+            case get_command(request) do
+              {:ok, %{extras: %{help: help}}} ->
+                request
+                |> helpmap()
+                |> Map.update!(:function_doc, help)
 
-            {:ok, %{function: function} = command} when is_atom(function) ->
-              with {_, _, _, moduledoc, _, _, function_docs} <- Code.fetch_docs(command.scope),
-                   {:docs, {_, _, _, _, function_doc}} <-
-                     {:docs, Keyword.get(function_docs, request.command.function)} do
-                callback_success.(request, %{
-                  moduledoc:
-                    if is_binary(moduledoc) do
-                      moduledoc
-                    else
-                      nil
-                    end,
-                  function_doc: function_doc["en"],
-                  subcommand_docs: subcommand_docs(command.subcommands)
-                })
-              else
-                {:error, error} ->
-                  callback_failure.(request, {:error, error})
+              {:ok, %{function: function} = command} when is_atom(function) ->
+                helpmap(request)
 
-                {:docs, _} ->
-                  callback_failure.(request, {:error, :no_docs})
-              end
+              error ->
+                error
+            end
 
-              :halted
-          end
+          callback.(result)
+
+          :halted
 
         true ->
           request
       end
     end
   end
+
+  defp helpmap(request) do
+    with {_, _, _, moduledoc, _, _, function_docs} <- Code.fetch_docs(command.scope),
+         {:docs, function_doc} <-
+           {:docs, Keyword.get(function_docs, request.command.function)} do
+      %{
+        moduledoc: maybe_moduledoc(moduledoc),
+        function_doc: maybe_function_doc(functino_doc),
+        subcommand_docs: subcommand_docs(command.subcommands)
+      }
+    else
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  defp maybe_moduledoc(moduledoc) when is_binary(moduledoc), do: moduledoc
+  defp maybe_moduledoc(_), do: nil
+
+  defp maybe_function_doc({_, _, _, _, function_doc}), do: function_doc["en"]
+  defp maybe_function_doc(nil), do: nil
 
   defp get_command(request) do
     Dispatcher.find_command(request.current_command, [
