@@ -22,21 +22,20 @@ defmodule Stopsel.Predicates do
   Otherwise this function will try to fetch the Dokumentation provided with `@doc`
 
     Options:
-      * name             - This function tries to imitate a command. If you add this predicate to
+      * name      - This function tries to imitate a command. If you add this predicate to
                            the Command with the name ";", your users can access help for commands
                            with ";help"
-      * callback_success - A function which will be called when help was successfully retrieved.
-      * callback_failure - A function which will be called when help was could not be retrieved.
-      * help_help        - sets `:function_doc` when the user asks for help on the help command
+      * callback  - A function which will be called when help was successfully retrieved.
+      * help_help - sets `:function_doc` when the user asks for help on the help command
   """
   @spec help([option]) :: Request.t() | :halted
   def help(options) do
     name = Keyword.get(options, :name, "help")
-    callback_success = Keyword.get(options, :callback_success)
-    callback_failure = Keyword.get(options, :callback_failure)
+    callback = Keyword.get(options, :callback)
 
     fn request ->
       cond do
+        # User wants help for helpcommand
         match?([^name, ^name | _], String.split(request.derived_content, parts: 3)) ->
           callback_success.(%{
             module_doc: nil,
@@ -44,22 +43,27 @@ defmodule Stopsel.Predicates do
             subcommand_docs: []
           })
 
+        # user wants help for a command.
         String.starts_with?(request.derived_content, name) ->
+          # Find out which command the user wants help with
           result =
             case get_command(request) do
+              # Command has a custom help field. We'll use this
               {:ok, %{extras: %{help: help}}} ->
                 request
                 |> helpmap()
                 |> Map.update!(:function_doc, help)
 
+              # Fetch help for command
               {:ok, %{function: function} = command} when is_atom(function) ->
                 helpmap(request)
 
+              # Return error that the user may handle
               error ->
                 error
             end
 
-          callback.(result)
+          callback.(request, result)
 
           :halted
 
