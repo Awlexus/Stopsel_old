@@ -10,7 +10,8 @@ defmodule Stopsel.Command do
             function: nil,
             predicates: [],
             commands: %{},
-            scope: nil
+            scope: nil,
+            extra: %{}
 
   @behaviour Access
   @type name :: String.t()
@@ -21,8 +22,17 @@ defmodule Stopsel.Command do
           name: name,
           function: command_function,
           predicates: [predicate],
-          scope: module
+          scope: module,
+          extra: map
         }
+
+  @type option ::
+          {:name, name}
+          | {:function, command_function}
+          | {:predicates, [predicate]}
+          | {:scope, module}
+          | {:extra, [{atom, term}]}
+  @type definition :: [option]
 
   def build(options, scope \\ nil)
 
@@ -41,6 +51,7 @@ defmodule Stopsel.Command do
     |> name_from_function()
     |> apply_scope(scope)
     |> build_subcommands()
+    |> extras_to_map()
   end
 
   defp apply_scope(command, scope), do: Map.update!(command, :scope, &combine_atoms(scope, &1))
@@ -71,6 +82,14 @@ defmodule Stopsel.Command do
   end
 
   defp with_name(command), do: {command.name, command}
+
+  defp extras_to_map(%{extras: extras} = command) when is_list(extras) do
+    Map.update!(command, :extras, Enum.into(extras, %{}))
+  end
+
+  defp extras_to_map(%{extras: extras} = command) when is_map(extras) do
+    command
+  end
 
   # Mandatory implementation of the Access behaviour
 
