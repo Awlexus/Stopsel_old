@@ -51,12 +51,16 @@ defmodule Stopsel.Command do
     |> name_from_function()
     |> apply_scope(scope)
     |> build_subcommands()
-    |> extras_to_map()
+    |> extra_to_map()
   end
 
   defp apply_scope(command, scope), do: Map.update!(command, :scope, &combine_atoms(scope, &1))
 
-  defp name_from_function(%{name: name} = command) when is_binary(name), do: command
+  defp name_from_function(%{name: name} = command) when is_binary(name) do
+    if name =~ ~r"\s", do: raise("Command names may not contain whitespaces")
+
+    command
+  end
 
   defp name_from_function(%{function: function} = command)
        when function != nil and is_atom(function) do
@@ -83,11 +87,11 @@ defmodule Stopsel.Command do
 
   defp with_name(command), do: {command.name, command}
 
-  defp extras_to_map(%{extras: extras} = command) when is_list(extras) do
-    Map.update!(command, :extras, Enum.into(extras, %{}))
+  defp extra_to_map(%{extra: extra} = command) when is_list(extra) do
+    Map.update!(command, :extra, Enum.into(extra, %{}))
   end
 
-  defp extras_to_map(%{extras: extras} = command) when is_map(extras) do
+  defp extra_to_map(%{extra: extra} = command) when is_map(extra) do
     command
   end
 

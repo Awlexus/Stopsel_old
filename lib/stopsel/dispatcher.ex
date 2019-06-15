@@ -144,14 +144,12 @@ defimpl Stopsel.Dispatcher, for: Command do
   end
 
   defp find_subcommand(command, message_content) do
-    result =
-      Enum.find(command.commands, fn {name, _subcommand} ->
-        String.starts_with?(message_content, name)
-      end)
-
-    case result do
-      nil -> nil
-      {_name, command} -> command
+    with [command_name | _] <- String.split(message_content, " ", parts: 2),
+         {_name, command} <-
+           Enum.find(command.commands, fn {name, _subcommand} -> name == command_name end) do
+      command
+    else
+      _ -> nil
     end
   end
 

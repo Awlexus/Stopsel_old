@@ -28,14 +28,23 @@ defmodule Stopsel do
     dispatch(dispatcher, %Request{message_content: message_content})
   end
 
-  def alias(name, alias_path, help_text_fun \\ &"Alias to #{&1}") do
-    %Command{
-      name: name,
-      scope: nil,
-      function: &dispatch(&1.dispatcher, alias_path),
-      extras: %{help: help_text_fun.(alias_path)}
-    }
-  end
-
   defdelegate dispatch(dispatcher, request), to: Dispatcher
+
+  @doc """
+  Creates an alias-command that points to given path
+  """
+  def alias(name, alias_path) do
+    forwarder = fn request ->
+      dispatch(
+        request.dispatcher,
+        %{
+          request
+          | derived_content: nil,
+            message_content: "#{alias_path} #{request.derived_content}"
+        }
+      )
+    end
+
+    %Command{name: name, scope: nil, function: forwarder}
+  end
 end
