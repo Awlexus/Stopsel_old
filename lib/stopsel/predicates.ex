@@ -9,31 +9,27 @@ defmodule Stopsel.Predicates do
   @type bad_result :: {:error, :no_docs | :module_not_found}
   @type result :: good_result | bad_result
   @type callback :: (Request.t(), result -> term)
-  @type option ::
-          {:name, String.t()}
-          | {:callback, callback}
-          | {:help_help, String.t()}
+  @type option :: {:name, String.t()} | {:help_help, String.t()}
   @doc """
   Fetches the help for a command.
 
   If the extra `:help` is set for the command it'll returned.
   Otherwise this function will try to fetch the Dokumentation provided with `@doc`
+  Calls the callback upon completion
 
   #### Options
   * `name` - This function tries to imitate a command. If you add this predicate to
   the Command with the name ";", your users can access help for commands with ";help"
-  * `callback`  - A function which will be called when help was successfully retrieved.
   * `help_help` - sets `:function_doc` when the user asks for help on the help command
   """
-  @spec help([option]) :: Request.t() | :halted
-  def help(options) do
+  @spec help(callback, [option]) :: Request.t() | :halted
+  def help(callback, options \\ []) do
     name = Keyword.get(options, :name, "help")
-    callback = Keyword.get(options, :callback)
 
     fn request ->
       cond do
         # User wants help for helpcommand
-        match?([^name, ^name | _], String.split(request.derived_content, parts: 3)) ->
+        match?([^name, ^name | _], String.split(request.derived_content, " ", parts: 3)) ->
           callback.(request, %{
             module_doc: nil,
             function_docs: Keyword.get(options, :help_help, "Shows you how to use this bot"),
@@ -47,13 +43,13 @@ defmodule Stopsel.Predicates do
             case get_command(request) do
               # Command has a custom help field. We'll use this
               {:ok, %{extras: %{help: help}} = command} ->
-                request
-                |> helpmap(command)
+                command
+                |> helpmap()
                 |> Map.update!(:function_doc, help)
 
               # Fetch help for command
               {:ok, %{function: function} = command} when is_atom(function) ->
-                helpmap(request, command)
+                helpmap(command)
 
               # Return error that the user may handle
               error ->
@@ -62,7 +58,7 @@ defmodule Stopsel.Predicates do
 
           callback.(request, result)
 
-          :halted
+          %{request | halted?: true}
 
         true ->
           request
@@ -70,15 +66,15 @@ defmodule Stopsel.Predicates do
     end
   end
 
-  defp helpmap(request, command) do
-    with {_, _, _, moduledoc, _, _, function_docs} <-
+  defp helpmap(command) do
+    with {_, _, _, _, moduledoc, _, function_docs} <-
            Code.fetch_docs(command.scope),
          {:docs, function_doc} <-
-           {:docs, Keyword.get(function_docs, request.command.function)} do
+           {:docs, Keyword.get(function_docs, command.function)} do
       %{
         moduledoc: maybe_moduledoc(moduledoc),
         function_doc: maybe_function_doc(function_doc),
-        subcommand_docs: subcommand_docs(command.subcommands)
+        subcommand_docs: subcommand_docs(command.commands)
       }
     else
       {:error, error} ->
@@ -86,7 +82,7 @@ defmodule Stopsel.Predicates do
     end
   end
 
-  defp maybe_moduledoc(moduledoc) when is_binary(moduledoc), do: moduledoc
+  defp maybe_moduledoc(%{"en" => moduledoc}) when is_binary(moduledoc), do: moduledoc
   defp maybe_moduledoc(_), do: nil
 
   defp maybe_function_doc({_, _, _, _, function_doc}), do: function_doc["en"]
@@ -94,20 +90,21 @@ defmodule Stopsel.Predicates do
 
   defp get_command(request) do
     Dispatcher.find_command(request.current_command, [
-      request.current_command.name | String.split(request.derived_content)
+      request.current_command.name | tl(String.split(request.derived_content))
     ])
   end
 
   defp subcommand_docs(subcommands) do
     subcommands
-    |> Enum.map(fn
-      %{extras: %{help: help}} ->
-        help
+    |> Stream.map(fn
+      {name, %{extras: %{help: help}}} ->
+        {name, help}
 
-      %{scope: scope, function: function} when is_atom(function) ->
-        with {_, _, _, _, _, _, function_docs} <- Code.fetch_docs(scope),
-             doc when is_binary(doc) <- Keyword.get(function_docs, function) do
-          doc
+      {name, %{scope: scope, function: function}} when is_atom(function) ->
+        with {_, _, _, _, _, _, function_docs} <-
+               Code.fetch_docs(scope),
+             doc when is_binary(doc) <- find_docs(function_docs, function) do
+          {name, doc}
         else
           _ ->
             nil
@@ -116,6 +113,20 @@ defmodule Stopsel.Predicates do
       _ ->
         nil
     end)
-    |> Enum.filter(& &1)
+    |> Stream.filter(& &1)
+    |> Enum.into(%{})
+  end
+
+  defp find_docs(function_docs, function) do
+    result =
+      Enum.find(function_docs, fn
+        {{:function, ^function, 1}, _, _, _, _} -> true
+        _ -> false
+      end)
+
+    case result do
+      {_, _, _, %{"en" => docs}, _} -> docs
+      _ -> nil
+    end
   end
 end
