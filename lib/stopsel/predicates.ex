@@ -67,16 +67,14 @@ defmodule Stopsel.Predicates do
   end
 
   defp helpmap(command) do
-    with {_, _, _, _, moduledoc, _, function_docs} <-
-           Code.fetch_docs(command.scope),
-         {:docs, function_doc} <-
-           {:docs, Keyword.get(function_docs, command.function)} do
-      %{
-        moduledoc: maybe_moduledoc(moduledoc),
-        function_doc: maybe_function_doc(function_doc),
-        subcommand_docs: subcommand_docs(command.commands)
-      }
-    else
+    case Code.fetch_docs(command.scope) do
+      {_, _, _, _, moduledoc, _, function_docs} ->
+        %{
+          moduledoc: maybe_moduledoc(moduledoc),
+          function_doc: find_docs(function_docs, command.function),
+          subcommand_docs: subcommand_docs(command.commands)
+        }
+
       {:error, error} ->
         {:error, error}
     end
@@ -84,9 +82,6 @@ defmodule Stopsel.Predicates do
 
   defp maybe_moduledoc(%{"en" => moduledoc}) when is_binary(moduledoc), do: moduledoc
   defp maybe_moduledoc(_), do: nil
-
-  defp maybe_function_doc({_, _, _, _, function_doc}), do: function_doc["en"]
-  defp maybe_function_doc(nil), do: nil
 
   defp get_command(request) do
     Dispatcher.find_command(request.current_command, [
