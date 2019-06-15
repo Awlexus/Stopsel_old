@@ -8,7 +8,8 @@ defmodule Stopsel.Request do
           channel_id: term,
           server_id: term,
           user_id: term,
-          assigns: map
+          assigns: map,
+          halted?: boolean
         }
 
   defstruct message_content: nil,
@@ -19,7 +20,8 @@ defmodule Stopsel.Request do
             channel_id: nil,
             server_id: nil,
             user_id: nil,
-            assigns: %{}
+            assigns: %{},
+            halted?: false
 
   def assign(request, key, value) do
     put_in(request.assigns[key], value)

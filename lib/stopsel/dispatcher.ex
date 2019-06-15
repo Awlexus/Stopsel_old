@@ -51,7 +51,7 @@ defimpl Stopsel.Dispatcher, for: Command do
     with nil <- find_subcommand(command, message_content),
          # No match, so we try to execute this function, after applying the predicates
          request = update_request(request, command),
-         %Request{} = request <- apply_predicates(request, command.predicates) do
+         %Request{halted?: false} = request <- apply_predicates(request, command.predicates) do
       execute(command, request)
     else
       # A matching subcommand was found!
@@ -63,7 +63,7 @@ defimpl Stopsel.Dispatcher, for: Command do
       :ignored ->
         :ignored
 
-      :halted ->
+      %Request{halted?: true} ->
         :halted
     end
   end
