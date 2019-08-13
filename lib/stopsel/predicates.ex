@@ -8,8 +8,9 @@ defmodule Stopsel.Predicates do
         }
   @type bad_result :: {:error, :no_docs | :module_not_found}
   @type result :: good_result | bad_result
-  @type callback :: (Request.t(), result -> term)
+  @type callback :: (Request.t(), result -> term) | {module, function}
   @type option :: {:name, String.t()} | {:help_help, String.t()}
+
   @doc """
   Fetches the help for a command.
 
@@ -30,7 +31,7 @@ defmodule Stopsel.Predicates do
       cond do
         # User wants help for helpcommand
         match?([^name, ^name | _], String.split(request.derived_content, " ", parts: 3)) ->
-          callback.(request, %{
+          call_callback(callback, request, %{
             module_doc: nil,
             function_docs: Keyword.get(options, :help_help, "Shows you how to use this bot"),
             subcommand_docs: []
@@ -56,7 +57,7 @@ defmodule Stopsel.Predicates do
                 error
             end
 
-          callback.(request, result)
+          call_callback(callback, request, result)
 
           %{request | halted?: true}
 
@@ -123,5 +124,13 @@ defmodule Stopsel.Predicates do
       {_, _, _, %{"en" => docs}, _} -> docs
       _ -> nil
     end
+  end
+
+  defp call_callback({module, function}, request, help) do
+    apply(module, function, [request, help])
+  end
+
+  defp call_callback(callback, request, help) when is_function(callback, 2) do
+    callback.(request, help)
   end
 end

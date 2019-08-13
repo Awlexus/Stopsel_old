@@ -49,5 +49,25 @@ defmodule Stopsel.PredicatesTest do
 
       Stopsel.dispatch(router, ";help calc add")
     end
+
+    test "can call a module function", %{router: router} do
+      router = %{
+        router
+        | predicates: [
+            Predicates.help({__MODULE__, :accept_help})
+          ]
+      }
+
+      output =
+        ExUnit.CaptureIO.capture_io(fn ->
+          Stopsel.dispatch(router, ";help, calc add")
+        end)
+
+      assert output == "help received\n"
+    end
+
+    def accept_help(_, _) do
+      IO.puts("help received")
+    end
   end
 end
