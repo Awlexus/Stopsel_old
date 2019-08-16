@@ -4,7 +4,7 @@ defmodule Stopsel.PredicatesTest do
   @add_doc "Pretends to add two numbers together"
   @subtract_doc "Pretends to subtract two numbers from eachother"
 
-  alias Stopsel.{Command, Predicates}
+  alias Stopsel.{Command, Predicates.Help}
 
   describe "help/1" do
     setup do
@@ -23,12 +23,13 @@ defmodule Stopsel.PredicatesTest do
       router = %{
         router
         | predicates: [
-            Predicates.help(fn _, help ->
-              assert help.moduledoc == @calc_moduledoc
-              assert help.function_doc == nil
-              assert help.subcommand_docs["add"] == @add_doc
-              assert help.subcommand_docs["subtract"] == @subtract_doc
-            end)
+            {Help,
+             callback: fn _, help ->
+               assert help.module_docs == @calc_moduledoc
+               assert help.function_docs == nil
+               assert help.subcommand_docs["add"] == @add_doc
+               assert help.subcommand_docs["subtract"] == @subtract_doc
+             end}
           ]
       }
 
@@ -39,11 +40,12 @@ defmodule Stopsel.PredicatesTest do
       router = %{
         router
         | predicates: [
-            Predicates.help(fn _, help ->
-              assert help.moduledoc == @calc_moduledoc
-              assert help.function_doc == @add_doc
-              assert help.subcommand_docs == %{}
-            end)
+            {Help,
+             callback: fn _, help ->
+               assert help.module_docs == @calc_moduledoc
+               assert help.function_docs == @add_doc
+               assert help.subcommand_docs == %{}
+             end}
           ]
       }
 
@@ -54,7 +56,7 @@ defmodule Stopsel.PredicatesTest do
       router = %{
         router
         | predicates: [
-            Predicates.help({__MODULE__, :accept_help})
+            {Help, callback: {__MODULE__, :accept_help}}
           ]
       }
 

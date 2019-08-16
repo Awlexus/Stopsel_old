@@ -154,14 +154,15 @@ defimpl Stopsel.Dispatcher, for: Command do
   end
 
   defp apply_predicates(request, predicates) do
-    Enum.reduce_while(predicates, request, fn predicate, request ->
-      case predicate.(request) do
-        %Request{} = request ->
-          {:cont, request}
+    Enum.reduce_while(predicates, request, fn
+      {predicate, options}, request ->
+        predicate.predicate(request, options) |> check_halted
 
-        _ ->
-          {:halt, :halt}
-      end
+      predicate, request when is_function(predicate) ->
+        predicate.(request) |> check_halted()
     end)
   end
+
+  defp check_halted(%{halted?: true} = request), do: {:cont, request}
+  defp check_halted(request), do: {:halt, request}
 end

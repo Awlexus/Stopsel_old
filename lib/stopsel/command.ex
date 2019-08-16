@@ -88,7 +88,7 @@ defmodule Stopsel.Command do
   defp with_name(command), do: {command.name, command}
 
   defp extra_to_map(%{extra: extra} = command) when is_list(extra) do
-    Map.update!(command, :extra, Enum.into(extra, %{}))
+    Map.update!(command, :extra, &Enum.into(&1, %{}))
   end
 
   defp extra_to_map(%{extra: extra} = command) when is_map(extra) do
