@@ -15,7 +15,7 @@ defmodule Stopsel.Command do
 
   @behaviour Access
   @type name :: String.t()
-  @type command_function :: (Request.t() -> term) | atom | nil
+  @type command_function :: (Request.t() -> term) | {module, atom} | atom | nil
   @type predicate :: (Request.t() -> Request.t())
 
   @type t :: %__MODULE__{
@@ -62,14 +62,17 @@ defmodule Stopsel.Command do
     command
   end
 
-  defp name_from_function(%{function: function} = command)
-       when function != nil and is_atom(function) do
+  defp name_from_function(%{function: function} = command) when function != nil and is_atom(function) do
     name =
       function
       |> to_string()
       |> String.replace(" ", "_")
 
     Map.put(command, :name, name)
+  end
+
+  defp name_from_function(%{function: {_module, function}} = command) when is_atom(function) do
+    Map.put(command, :name, to_string(function))
   end
 
   defp name_from_function(_),

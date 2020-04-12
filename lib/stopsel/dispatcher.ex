@@ -133,9 +133,11 @@ defimpl Stopsel.Dispatcher, for: Command do
   defp execute(%Command{function: function}, request) when is_function(function, 1),
     do: function.(request)
 
-  defp execute(%Command{function: function, scope: scope}, request)
-       when is_atom(function),
-       do: apply(scope, function, [request])
+  defp execute(%Command{function: {module, function}}, request) when is_atom(module) and is_atom(function),
+    do: apply(module, function, [request])
+
+  defp execute(%Command{function: function, scope: scope}, request) when is_atom(function),
+    do: apply(scope,  function, [request])
 
   defp remove_prefix(message_content, prefix) do
     message_content
