@@ -31,7 +31,7 @@ defmodule Stopsel.Command do
           | {:function, command_function}
           | {:predicates, [predicate]}
           | {:scope, module}
-          | {:extra, [{atom, term}]}
+          | {:extra, [{atom, term}] | map}
   @type definition :: [option]
 
   def build(options, scope \\ nil)
