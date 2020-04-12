@@ -2,7 +2,7 @@ defmodule Stopsel do
   alias Stopsel.{Command, Dispatcher, Request}
 
   @doc """
-  Same as `command/1` except you can use `:prefix` instead of `:name`
+  Creates the toplevel of your command-graph and should not be used inside the 
   """
   def router(options) do
     options
@@ -16,7 +16,9 @@ defmodule Stopsel do
 
   See [`build/2`](Stopsel.Command.html#build/2) for more information.
   """
-  defdelegate command(options), to: Command, as: :build
+  def command(options) do
+    struct!(Command, options)
+  end
 
   @doc """
   Dispatches a message.
