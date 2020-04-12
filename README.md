@@ -27,13 +27,17 @@ router(
   commands: [
     command(
       name: "echo",
-      help: ~s/Replies with whatever the user wrote (excluding the "echo")./,
-      function: :echo
+      function: :echo,
+      extra: %{
+        help: ~s/Replies with whatever the user wrote (excluding the "echo")./
+      }
     ),
     command(
       name: "reverse",
-      help: ~s/Reverses and replies with whatever the user wrote (excluding the "reverse")./,
-      function: :reverse
+      function: :reverse,
+      extra: %{
+        help: ~s/Reverses and replies with whatever the user wrote (excluding the "reverse")./
+      }
     )
   ]
 )
@@ -47,13 +51,17 @@ Command.build(
   commands: [
     [
       name: "echo",
-      help: ~s/Replies with whatever the user wrote (excluding the "echo")./,
-      function: :echo
+      function: :echo,
+      extra: %{
+        help: ~s/Replies with whatever the user wrote (excluding the "echo")./
+      }
     ],
     [
       name: "reverse",
-      help: ~s/Reverses and replies with whatever the user wrote (excluding the "reverse")./,
-      function: :reverse
+      function: :reverse,
+      extra: %{
+        help: ~s/Reverses and replies with whatever the user wrote (excluding the "reverse")./
+      }
     ]
   ]
 )
